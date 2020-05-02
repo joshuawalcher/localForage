@@ -31,8 +31,8 @@ localForage includes a localStorage-backed fallback store for browsers with no I
 # Install via npm:
 npm install localforage
 
-# Or with bower:
-bower install localforage
+# Or, with yarn:
+yarn add localforage
 ```
 
 ```html
@@ -40,7 +40,7 @@ bower install localforage
 <script>console.log('localforage is: ', localforage);</script>
 ```
 
-To use localForage, [download the latest release](https://github.com/mozilla/localForage/releases) or install with [npm](https://www.npmjs.org/) (`npm install localforage`) or [bower](http://bower.io/) (`bower install localforage`).
+To use localForage, [download the latest release](https://github.com/mozilla/localForage/releases) or install with [npm](https://www.npmjs.org/) (`npm install localforage`) or [yarn](http://yarnpkg.com/) (`yarn add localforage`).
 
 Then simply include the JS file and start using localForage: `<script src="localforage.js"></script>`. You don't need to run any init method or wait for any `onready` events.
 
@@ -66,6 +66,19 @@ localforage.getItem('somekey', function(err, value) {
     // loaded from the offline store.
     console.log(value);
 });
+
+Or, use `async`/`await`:
+
+```js
+try {
+    const value = await localforage.getItem('somekey');
+    // This code runs once the value has been loaded
+    // from the offline store.
+    console.log(value);
+} catch (err) {
+    // This code runs if there were any errors.
+    console.log(err);
+}
 ```
 
 `getItem(key, successCallback)`
@@ -367,7 +380,7 @@ Set and persist localForage options. This must be called *before* any other call
   </dd>
   <dt>version</dt>
   <dd>
-    The version of your database. May be used for upgrades in the future; currently unused.<br>
+    The schema version of your database. Used only in WebSQL and IndexedDB. In WebSQL, this simply sets the version, and in IndexedDB this may trigger an <code>onupgradeneeded</code> event if a version upgrade is detected. If a new store is detected, localForage will ask IndexedDB to increment the version itself to manually trigger the <code>onupgradeneeded</code> event. As of right now, upgrade events are not customizable, but may be in the future. For drivers that do not support configuration for versioning, this value simply gets thrown away.<br>
     Default: <code>1.0</code>
   </dd>
   <dt>description</dt>
@@ -400,6 +413,9 @@ var myCustomDriver = {
     getItem: function(key, callback) {
         // Custom implementation here...
     },
+    iterate: function(iteratorCallback, successCallback) {
+        // Custom implementation here...
+    },    
     key: function(n, callback) {
         // Custom implementation here...
     },
@@ -440,7 +456,7 @@ localforage.driver();
 
 `driver()`
 
-Returns the name of the driver being used, or `null` if none can be used.
+Returns the name of the driver being used, `null` during the asynchronous driver initialization process (see <a href="#driver-api-ready"><code>ready</code></a> for more details), or `null` if the asynchronous driver initialization process failed to find a usable driver.
 
 <aside class="notice">
   In case that a driver fails during or right after the initialization process, then localForage will try to use the next in order driver. That is with respect to the default driver order while loading localForage or to the order the drivers were passed to `setDriver()`.
@@ -496,3 +512,28 @@ otherStore.setItem("key", "value2");
 ```
 
 Creates a new instance of localForage and returns it. Each object contains its own database and doesn't affect other instances of localForage.
+
+## dropInstance
+
+```js
+localforage.dropInstance().then(function() {
+  console.log('Dropped the store of the current instance');
+});
+
+localforage.dropInstance({
+  name: "otherName",
+  storeName: "otherStore"
+}).then(function() {
+  console.log('Dropped otherStore').
+});
+
+localforage.dropInstance({
+  name: "otherName"
+}).then(function() {
+  console.log('Dropped otherName database').
+});
+```
+
+When invoked with no arguments, it drops the "store" of the current instance.
+When invoked with an object specifying both `name` and `storeName` properties, it drops the specified "store".
+When invoked with an object specifying only a `name` property, it drops the specified "database" (and all its stores).
